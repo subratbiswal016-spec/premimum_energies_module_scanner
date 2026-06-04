@@ -21,6 +21,7 @@ class _FormScreenState extends State<FormScreen> {
   final TextEditingController _stationController = TextEditingController();
   final TextEditingController _operatorController = TextEditingController();
   final TextEditingController _reasonController = TextEditingController();
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -55,60 +56,145 @@ class _FormScreenState extends State<FormScreen> {
   }
 
   void _saveData() async {
+    if (_isSaving) return;
     if (_formKey.currentState!.validate()) {
-      final record = ScanRecord(
-        date: _dateController.text,
-        moduleId: _moduleIdController.text,
-        jobCard: _jobCardController.text,
-        station: _stationController.text,
-        operatorName: _operatorController.text,
-        reason: _reasonController.text,
-      );
-      
-      final result = await ApiService.createScan(record);
-      
-      if (!mounted) return;
-      
-      if (result['statusCode'] == 201) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(
-              children: [
-                Icon(Icons.check_circle_outline, color: Colors.white),
-                SizedBox(width: 12),
-                Text('Record Saved Successfully', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-              ],
-            ),
-            backgroundColor: Colors.green.shade600,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            margin: const EdgeInsets.all(20),
-          ),
-        );
-        Navigator.pop(context);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error_outline, color: Colors.white),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    result['data'] != null && result['data']['message'] != null
-                        ? result['data']['message']
-                        : 'Failed to save record',
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-                  ),
+      setState(() {
+        _isSaving = true;
+      });
+
+      final moduleId = _moduleIdController.text;
+
+      try {
+        final exists = await ApiService.checkExists(moduleId);
+
+        if (exists) {
+          if (!mounted) return;
+          final bool? shouldSave = await showDialog<bool>(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) {
+              return AlertDialog(
+                backgroundColor: const Color(0xFF1E1E2E),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                title: const Row(
+                  children: [
+                    Icon(Icons.warning_amber_rounded, color: Colors.orangeAccent, size: 28),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Already Scanned',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            backgroundColor: Colors.redAccent,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            margin: const EdgeInsets.all(20),
-          ),
+                content: Text(
+                  'This barcode ($moduleId) has already been scanned. Do you want to save this?',
+                  style: TextStyle(color: Colors.grey.shade300, fontSize: 15),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: Text(
+                      'NO',
+                      style: TextStyle(color: Colors.grey.shade400, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orangeAccent,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    ),
+                    child: const Text(
+                      'YES',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              );
+            },
+          );
+
+          if (shouldSave != true) {
+            setState(() {
+              _isSaving = false;
+            });
+            return;
+          }
+        }
+
+        final record = ScanRecord(
+          date: _dateController.text,
+          moduleId: moduleId,
+          jobCard: _jobCardController.text,
+          station: _stationController.text,
+          operatorName: _operatorController.text,
+          reason: _reasonController.text,
         );
+
+        final result = await ApiService.createScan(record);
+
+        if (!mounted) return;
+
+        if (result['statusCode'] == 201) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Row(
+                children: [
+                  Icon(Icons.check_circle_outline, color: Colors.white),
+                  SizedBox(width: 12),
+                  Text('Record Saved Successfully', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                ],
+              ),
+              backgroundColor: Colors.green.shade600,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              margin: const EdgeInsets.all(20),
+            ),
+          );
+          Navigator.pop(context);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.white),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      result['data'] != null && result['data']['message'] != null
+                          ? result['data']['message']
+                          : 'Failed to save record',
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.redAccent,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              margin: const EdgeInsets.all(20),
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isSaving = false;
+          });
+        }
       }
     }
   }
@@ -216,12 +302,21 @@ class _FormScreenState extends State<FormScreen> {
                         color: Colors.transparent,
                         child: InkWell(
                           borderRadius: BorderRadius.circular(16),
-                          onTap: _saveData,
-                          child: const Center(
-                            child: Text(
-                              'SAVE RECORD',
-                              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.5),
-                            ),
+                          onTap: _isSaving ? null : _saveData,
+                          child: Center(
+                            child: _isSaving
+                                ? const SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Text(
+                                    'SAVE RECORD',
+                                    style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+                                  ),
                           ),
                         ),
                       ),

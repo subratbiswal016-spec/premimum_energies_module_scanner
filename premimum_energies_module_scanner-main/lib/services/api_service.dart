@@ -150,6 +150,19 @@ class ApiService {
     return false;
   }
 
+  static Future<bool> checkExists(String moduleId) async {
+    final headers = await _getHeaders();
+    final response = await http.get(
+      Uri.parse('$baseUrl/scans/exists/$moduleId'),
+      headers: headers,
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['exists'] ?? false;
+    }
+    return false;
+  }
+
   static Future<List<String>> getDatesWithData() async {
     final headers = await _getHeaders();
     final response = await http.get(Uri.parse('$baseUrl/scans/dates'), headers: headers);
