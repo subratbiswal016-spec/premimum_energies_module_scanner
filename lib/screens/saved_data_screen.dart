@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
 import '../models/scan_record.dart';
-import '../services/db_service.dart';
+import '../services/api_service.dart';
 import '../services/export_service.dart';
 
 class SavedDataScreen extends StatefulWidget {
@@ -20,22 +20,32 @@ class _SavedDataScreenState extends State<SavedDataScreen> {
   Set<DateTime> _datesWithData = {};
   bool _isSearching = false;
   final TextEditingController _searchController = TextEditingController();
+  bool _isAdmin = false;
 
   @override
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
+    _checkRole();
     _loadRecordsForDate(_selectedDay!);
     _loadDatesWithData();
   }
 
+  Future<void> _checkRole() async {
+    final admin = await ApiService.isAdmin();
+    if (mounted) {
+      setState(() {
+        _isAdmin = admin;
+      });
+    }
+  }
+
   Future<void> _loadDatesWithData() async {
-    final db = await DBService().database;
-    final List<Map<String, dynamic>> maps = await db.rawQuery('SELECT DISTINCT date FROM scans');
+    final datesList = await ApiService.getDatesWithData();
     Set<DateTime> dates = {};
-    for (var map in maps) {
+    for (var dateStr in datesList) {
       try {
-        DateTime dt = DateFormat('yyyy-MM-dd').parse(map['date']);
+        DateTime dt = DateFormat('yyyy-MM-dd').parse(dateStr);
         dates.add(DateTime(dt.year, dt.month, dt.day));
       } catch (e) {}
     }
@@ -50,7 +60,7 @@ class _SavedDataScreenState extends State<SavedDataScreen> {
     Map<String, bool> dupMap = {};
     for (var r in records) {
       if (!dupMap.containsKey(r.moduleId)) {
-        dupMap[r.moduleId] = await DBService().isDuplicate(r.moduleId);
+        dupMap[r.moduleId] = await ApiService.isDuplicate(r.moduleId);
       }
     }
     if (mounted) {
@@ -62,12 +72,14 @@ class _SavedDataScreenState extends State<SavedDataScreen> {
 
   void _loadRecordsForDate(DateTime date) async {
     String dateStr = DateFormat('yyyy-MM-dd').format(date);
-    final records = await DBService().getScansByDate(dateStr);
-    setState(() {
-      _records = records;
-      _isSearching = false;
-    });
-    _checkDuplicates(records);
+    final records = await ApiService.getScans(date: dateStr);
+    if (mounted) {
+      setState(() {
+        _records = records;
+        _isSearching = false;
+      });
+      _checkDuplicates(records);
+    }
   }
 
   void _performSearch(String query) async {
@@ -75,15 +87,19 @@ class _SavedDataScreenState extends State<SavedDataScreen> {
       _loadRecordsForDate(_selectedDay!);
       return;
     }
-    final records = await DBService().searchScansByModuleId(query);
-    setState(() {
-      _records = records;
-      _isSearching = true;
-    });
-    _checkDuplicates(records);
+    final records = await ApiService.getScans(search: query);
+    if (mounted) {
+      setState(() {
+        _records = records;
+        _isSearching = true;
+      });
+      _checkDuplicates(records);
+    }
   }
 
   Future<void> _exportData() async {
+    if (!_isAdmin) return;
+
     final DateTimeRange? picked = await showDateRangePicker(
       context: context,
       firstDate: DateTime(2020),
@@ -104,7 +120,7 @@ class _SavedDataScreenState extends State<SavedDataScreen> {
       String startDateStr = DateFormat('yyyy-MM-dd').format(picked.start);
       String endDateStr = DateFormat('yyyy-MM-dd').format(picked.end);
 
-      final records = await DBService().getScansByDateRange(startDateStr, endDateStr);
+      final records = await ApiService.getScans(startDate: startDateStr, endDate: endDateStr);
       
       if (!mounted) return;
 
@@ -155,6 +171,8 @@ class _SavedDataScreenState extends State<SavedDataScreen> {
   }
 
   void _deleteRecord(ScanRecord record) async {
+    if (!_isAdmin) return;
+
     final bool? confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -167,10 +185,18 @@ class _SavedDataScreenState extends State<SavedDataScreen> {
       ),
     );
 
-    if (confirm == true) {
-      await DBService().deleteScan(record.id!);
-      _loadRecordsForDate(_selectedDay!);
-      _loadDatesWithData();
+    if (confirm == true && record.mongoId != null) {
+      final result = await ApiService.deleteScan(record.mongoId!);
+      if (mounted) {
+        if (result['statusCode'] == 200) {
+          _loadRecordsForDate(_selectedDay!);
+          _loadDatesWithData();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to delete scan: ${result['data']['message'] ?? ''}')),
+          );
+        }
+      }
     }
   }
 
@@ -203,6 +229,8 @@ class _SavedDataScreenState extends State<SavedDataScreen> {
                 _buildDetailRow('Station:', record.station),
                 _buildDetailRow('Operator:', record.operatorName),
                 _buildDetailRow('Date:', record.date),
+                if (record.savedBy.isNotEmpty)
+                  _buildDetailRow('Saved By:', record.savedBy),
                 const Divider(),
                 const Text('Reason:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
                 const SizedBox(height: 4),
@@ -240,11 +268,12 @@ class _SavedDataScreenState extends State<SavedDataScreen> {
       appBar: AppBar(
         title: const Text('Saved Records'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.file_download_rounded),
-            tooltip: 'Export to Excel',
-            onPressed: _exportData,
-          ),
+          if (_isAdmin)
+            IconButton(
+              icon: const Icon(Icons.file_download_rounded),
+              tooltip: 'Export to Excel',
+              onPressed: _exportData,
+            ),
         ],
       ),
       body: Column(
@@ -417,6 +446,8 @@ class _SavedDataScreenState extends State<SavedDataScreen> {
                                           _buildTag(Icons.credit_card_rounded, record.jobCard, Theme.of(context).colorScheme.secondary),
                                           _buildTag(Icons.storefront_rounded, record.station, Colors.orange),
                                           _buildTag(Icons.person_rounded, record.operatorName, Colors.blue),
+                                          if (record.savedBy.isNotEmpty)
+                                            _buildTag(Icons.account_circle_outlined, record.savedBy, Colors.deepPurple),
                                           if (isDuplicate)
                                             _buildTag(Icons.warning_rounded, 'DUPLICATE', Colors.redAccent),
                                           if (record.reason.isNotEmpty)
@@ -425,14 +456,15 @@ class _SavedDataScreenState extends State<SavedDataScreen> {
                                       ),
                                     ],
                                   ),
-                                  Positioned(
-                                    top: -10,
-                                    right: -10,
-                                    child: IconButton(
-                                      icon: const Icon(Icons.delete_rounded, color: Colors.redAccent),
-                                      onPressed: () => _deleteRecord(record),
+                                  if (_isAdmin)
+                                    Positioned(
+                                      top: -10,
+                                      right: -10,
+                                      child: IconButton(
+                                        icon: const Icon(Icons.delete_rounded, color: Colors.redAccent),
+                                        onPressed: () => _deleteRecord(record),
+                                      ),
                                     ),
-                                  ),
                                 ],
                               ),
                             ),

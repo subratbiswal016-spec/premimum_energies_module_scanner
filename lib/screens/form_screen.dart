@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/scan_record.dart';
-import '../services/db_service.dart';
+import '../services/api_service.dart';
 
 class FormScreen extends StatefulWidget {
   final String scannedData;
@@ -65,25 +65,51 @@ class _FormScreenState extends State<FormScreen> {
         reason: _reasonController.text,
       );
       
-      await DBService().insertScan(record);
+      final result = await ApiService.createScan(record);
       
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Row(
-            children: [
-              Icon(Icons.check_circle_outline, color: Colors.white),
-              SizedBox(width: 12),
-              Text('Record Saved Successfully', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-            ],
+      
+      if (result['statusCode'] == 201) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.check_circle_outline, color: Colors.white),
+                SizedBox(width: 12),
+                Text('Record Saved Successfully', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+              ],
+            ),
+            backgroundColor: Colors.green.shade600,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.all(20),
           ),
-          backgroundColor: Colors.green.shade600,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          margin: const EdgeInsets.all(20),
-        ),
-      );
-      Navigator.pop(context);
+        );
+        Navigator.pop(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    result['data'] != null && result['data']['message'] != null
+                        ? result['data']['message']
+                        : 'Failed to save record',
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.all(20),
+          ),
+        );
+      }
     }
   }
 

@@ -1,11 +1,67 @@
 import 'package:flutter/material.dart';
 import 'scanner_screen.dart';
 import 'saved_data_screen.dart';
+import 'admin_panel_screen.dart';
+import 'login_screen.dart';
 import '../theme_manager.dart';
+import '../services/api_service.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   final ThemeManager themeManager;
   const HomeScreen({Key? key, required this.themeManager}) : super(key: key);
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  bool _isAdmin = false;
+  String _username = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserInfo();
+  }
+
+  Future<void> _loadUserInfo() async {
+    final isAdmin = await ApiService.isAdmin();
+    final username = await ApiService.getUsername();
+    if (mounted) {
+      setState(() {
+        _isAdmin = isAdmin;
+        _username = username;
+      });
+    }
+  }
+
+  void _logout() async {
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Logout', style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await ApiService.logout();
+      if (!mounted) return;
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => LoginScreen(themeManager: widget.themeManager)),
+        (route) => false,
+      );
+    }
+  }
 
   Widget _buildPremiumButton({
     required BuildContext context,
@@ -134,9 +190,18 @@ class HomeScreen extends StatelessWidget {
                             ),
                           ],
                         ),
-                        IconButton(
-                          icon: Icon(themeManager.themeMode == ThemeMode.dark ? Icons.light_mode : Icons.dark_mode),
-                          onPressed: themeManager.toggleTheme,
+                        Row(
+                          children: [
+                            IconButton(
+                              icon: Icon(widget.themeManager.themeMode == ThemeMode.dark ? Icons.light_mode : Icons.dark_mode),
+                              onPressed: widget.themeManager.toggleTheme,
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
+                              tooltip: 'Logout',
+                              onPressed: _logout,
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -158,13 +223,27 @@ class HomeScreen extends StatelessWidget {
                               Icon(Icons.waving_hand_rounded, size: 16, color: Theme.of(context).colorScheme.primary),
                               const SizedBox(width: 8),
                               Text(
-                                'Hello, ${themeManager.userName}',
+                                'Hello, $_username',
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,
                                   color: Theme.of(context).colorScheme.primary,
                                 ),
                               ),
+                              if (_isAdmin) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: const Text(
+                                    'ADMIN',
+                                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.orange),
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -202,6 +281,20 @@ class HomeScreen extends StatelessWidget {
                       );
                     },
                   ),
+                  if (_isAdmin)
+                    _buildPremiumButton(
+                      context: context,
+                      title: 'Admin Panel',
+                      subtitle: 'Manage users and system',
+                      icon: Icons.admin_panel_settings_rounded,
+                      gradientColors: const [Color(0xFFFF6B6B), Color(0xFFFF8E8E)],
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const AdminPanelScreen()),
+                        );
+                      },
+                    ),
                   const SizedBox(height: 40),
                 ],
               ),
