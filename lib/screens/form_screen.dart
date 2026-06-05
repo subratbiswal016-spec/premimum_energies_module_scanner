@@ -139,41 +139,37 @@ class _FormScreenState extends State<FormScreen> {
       final localId = await DBService().insertScan(record);
       final localScan = record.copyWith(id: localId);
       
-      bool isSynced = false;
-      try {
-        final syncResult = await ApiService().uploadScan(localScan);
-        if (syncResult['success'] == true) {
-          final backendId = syncResult['backendId'];
-          await DBService().markAsSynced(localId, backendId);
-          isSynced = true;
-        }
-      } catch (e) {
-        // Upload failed - will sync later
-      }
-      
       if (!mounted) return;
+      
+      // Close form immediately for a better, instant flow
+      Navigator.pop(context);
+      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Row(
+          content: const Row(
             children: [
-              Icon(
-                isSynced ? Icons.check_circle_outline : Icons.cloud_off_rounded,
-                color: Colors.white,
-              ),
-              const SizedBox(width: 12),
-              Text(
-                isSynced ? 'Record Synced & Saved' : 'Saved Locally (Offline)',
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-              ),
+              Icon(Icons.cloud_upload_outlined, color: Colors.white),
+              SizedBox(width: 12),
+              Text('Record Saved! Syncing to cloud...', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
             ],
           ),
-          backgroundColor: isSynced ? Colors.green.shade600 : Colors.orange.shade600,
+          backgroundColor: Colors.blue.shade600,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           margin: const EdgeInsets.all(20),
+          duration: const Duration(seconds: 2),
         ),
       );
-      Navigator.pop(context);
+
+      // Upload in the background so the user isn't stuck waiting
+      ApiService().uploadScan(localScan).then((syncResult) async {
+        if (syncResult['success'] == true) {
+          final backendId = syncResult['backendId'];
+          await DBService().markAsSynced(localId, backendId);
+        }
+      }).catchError((_) {
+        // Will sync later via home screen
+      });
     }
   }
 

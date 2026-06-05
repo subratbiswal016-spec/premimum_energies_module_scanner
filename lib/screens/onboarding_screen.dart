@@ -13,9 +13,9 @@ class OnboardingScreen extends StatefulWidget {
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _urlController = TextEditingController(text: 'http://192.168.0.73:3000');
-  final TextEditingController _usernameController = TextEditingController(text: 'admin');
-  final TextEditingController _passwordController = TextEditingController(text: 'admin123');
+  final TextEditingController _urlController = TextEditingController(text: 'https://premier-sccanner-backend.onrender.com');
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
   bool _isLoading = false;
   bool _obscurePassword = true;
 

@@ -67,6 +67,8 @@ class ScanRecord {
     String? reason,
     bool? isSynced,
     String? backendId,
+    String? time,
+    String? savedBy,
   }) {
     return ScanRecord(
       id: id ?? this.id,
@@ -78,6 +80,8 @@ class ScanRecord {
       reason: reason ?? this.reason,
       isSynced: isSynced ?? this.isSynced,
       backendId: backendId ?? this.backendId,
+      time: time ?? this.time,
+      savedBy: savedBy ?? this.savedBy,
     );
   }
 }

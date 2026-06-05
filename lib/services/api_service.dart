@@ -29,7 +29,7 @@ class ApiService {
           'username': username,
           'password': password,
         }),
-      ).timeout(const Duration(seconds: 8));
+      ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -66,7 +66,7 @@ class ApiService {
       final response = await http.post(
         url,
         headers: _getHeaders(themeManager.token),
-      ).timeout(const Duration(seconds: 4));
+      ).timeout(const Duration(seconds: 30));
       return response.statusCode == 200;
     } catch (e) {
       debugPrint('Logout API error: $e');
@@ -103,7 +103,7 @@ class ApiService {
           'operatorName': record.operatorName,
           'reason': record.reason,
         }),
-      ).timeout(const Duration(seconds: 5));
+      ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 201) {
         final data = jsonDecode(response.body);
@@ -147,7 +147,7 @@ class ApiService {
       final response = await http.delete(
         url,
         headers: _getHeaders(token),
-      ).timeout(const Duration(seconds: 5));
+      ).timeout(const Duration(seconds: 30));
 
       return response.statusCode == 200;
     } catch (e) {
@@ -182,7 +182,7 @@ class ApiService {
       final response = await http.get(
         Uri.parse(uri),
         headers: _getHeaders(token),
-      ).timeout(const Duration(seconds: 5));
+      ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
@@ -235,7 +235,7 @@ class ApiService {
       final response = await http.get(
         url,
         headers: _getHeaders(themeManager.token),
-      ).timeout(const Duration(seconds: 5));
+      ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
@@ -270,7 +270,7 @@ class ApiService {
           'password': password,
           'role': role,
         }),
-      ).timeout(const Duration(seconds: 5));
+      ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 201) {
         final data = jsonDecode(response.body);
@@ -307,7 +307,7 @@ class ApiService {
       final response = await http.delete(
         url,
         headers: _getHeaders(themeManager.token),
-      ).timeout(const Duration(seconds: 5));
+      ).timeout(const Duration(seconds: 30));
 
       return response.statusCode == 200;
     } catch (e) {
@@ -334,7 +334,7 @@ class ApiService {
       final response = await http.get(
         url,
         headers: _getHeaders(token),
-      ).timeout(const Duration(seconds: 3));
+      ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
