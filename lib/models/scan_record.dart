@@ -6,6 +6,10 @@ class ScanRecord {
   final String station;
   final String operatorName;
   final String reason;
+  final bool isSynced;
+  final String? backendId;
+  final String? savedBy;
+  final String? time;
 
   ScanRecord({
     this.id,
@@ -15,6 +19,10 @@ class ScanRecord {
     required this.station,
     required this.operatorName,
     required this.reason,
+    this.isSynced = false,
+    this.backendId,
+    this.savedBy,
+    this.time,
   });
 
   Map<String, dynamic> toMap() {
@@ -26,6 +34,10 @@ class ScanRecord {
       'station': station,
       'operator': operatorName,
       'reason': reason,
+      'is_synced': isSynced ? 1 : 0,
+      'backend_id': backendId,
+      'saved_by': savedBy,
+      'time': time,
     };
   }
 
@@ -37,7 +49,35 @@ class ScanRecord {
       jobCard: map['job_card'],
       station: map['station'],
       operatorName: map['operator'],
-      reason: map['reason'],
+      reason: map['reason'] ?? '',
+      isSynced: (map['is_synced'] ?? 0) == 1,
+      backendId: map['backend_id'],
+      savedBy: map['saved_by'],
+      time: map['time'],
+    );
+  }
+
+  ScanRecord copyWith({
+    int? id,
+    String? date,
+    String? moduleId,
+    String? jobCard,
+    String? station,
+    String? operatorName,
+    String? reason,
+    bool? isSynced,
+    String? backendId,
+  }) {
+    return ScanRecord(
+      id: id ?? this.id,
+      date: date ?? this.date,
+      moduleId: moduleId ?? this.moduleId,
+      jobCard: jobCard ?? this.jobCard,
+      station: station ?? this.station,
+      operatorName: operatorName ?? this.operatorName,
+      reason: reason ?? this.reason,
+      isSynced: isSynced ?? this.isSynced,
+      backendId: backendId ?? this.backendId,
     );
   }
 }

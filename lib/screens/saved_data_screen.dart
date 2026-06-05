@@ -4,9 +4,12 @@ import 'package:intl/intl.dart';
 import '../models/scan_record.dart';
 import '../services/db_service.dart';
 import '../services/export_service.dart';
+import '../services/api_service.dart';
+import '../theme_manager.dart';
 
 class SavedDataScreen extends StatefulWidget {
-  const SavedDataScreen({Key? key}) : super(key: key);
+  final ThemeManager themeManager;
+  const SavedDataScreen({Key? key, required this.themeManager}) : super(key: key);
 
   @override
   State<SavedDataScreen> createState() => _SavedDataScreenState();
@@ -60,14 +63,47 @@ class _SavedDataScreenState extends State<SavedDataScreen> {
     }
   }
 
+  Future<void> _handleRefresh() async {
+    if (_selectedDay != null) {
+      _loadRecordsForDate(_selectedDay!);
+    }
+    await _loadDatesWithData();
+  }
+
   void _loadRecordsForDate(DateTime date) async {
     String dateStr = DateFormat('yyyy-MM-dd').format(date);
+    // 1. Load from local DB first
     final records = await DBService().getScansByDate(dateStr);
     setState(() {
       _records = records;
       _isSearching = false;
     });
     _checkDuplicates(records);
+
+    // 2. Fetch from backend and cache
+    try {
+      final backendRecords = await ApiService().fetchScans(date: dateStr);
+      if (backendRecords.isNotEmpty) {
+        final db = DBService();
+        for (var brec in backendRecords) {
+          final localScans = await db.searchScansByModuleId(brec.moduleId);
+          final match = localScans.where((s) => s.date == brec.date).toList();
+          if (match.isNotEmpty) {
+            await db.updateScan(match.first.id!, brec);
+          } else {
+            await db.insertScan(brec);
+          }
+        }
+        
+        final updatedRecords = await db.getScansByDate(dateStr);
+        if (mounted) {
+          setState(() {
+            _records = updatedRecords;
+          });
+          _checkDuplicates(updatedRecords);
+        }
+      }
+    } catch (_) {}
   }
 
   void _performSearch(String query) async {
@@ -75,12 +111,36 @@ class _SavedDataScreenState extends State<SavedDataScreen> {
       _loadRecordsForDate(_selectedDay!);
       return;
     }
-    final records = await DBService().searchScansByModuleId(query);
+    final localRecords = await DBService().searchScansByModuleId(query);
     setState(() {
-      _records = records;
+      _records = localRecords;
       _isSearching = true;
     });
-    _checkDuplicates(records);
+    _checkDuplicates(localRecords);
+
+    // Try fetching from backend for search query
+    try {
+      final backendRecords = await ApiService().fetchScans(search: query);
+      if (backendRecords.isNotEmpty) {
+        final db = DBService();
+        for (var brec in backendRecords) {
+          final localScans = await db.searchScansByModuleId(brec.moduleId);
+          final match = localScans.where((s) => s.date == brec.date).toList();
+          if (match.isNotEmpty) {
+            await db.updateScan(match.first.id!, brec);
+          } else {
+            await db.insertScan(brec);
+          }
+        }
+        final updatedRecords = await db.searchScansByModuleId(query);
+        if (mounted && _searchController.text == query) {
+          setState(() {
+            _records = updatedRecords;
+          });
+          _checkDuplicates(updatedRecords);
+        }
+      }
+    } catch (_) {}
   }
 
   Future<void> _exportData() async {
@@ -168,6 +228,9 @@ class _SavedDataScreenState extends State<SavedDataScreen> {
     );
 
     if (confirm == true) {
+      if (record.backendId != null) {
+        await ApiService().deleteScan(record.backendId!, themeManager: widget.themeManager);
+      }
       await DBService().deleteScan(record.id!);
       _loadRecordsForDate(_selectedDay!);
       _loadDatesWithData();
@@ -238,7 +301,35 @@ class _SavedDataScreenState extends State<SavedDataScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Saved Records'),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              height: 28,
+              width: 28,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+                border: Border.all(color: Colors.grey.withOpacity(0.2), width: 0.5),
+              ),
+              padding: const EdgeInsets.all(2),
+              clipBehavior: Clip.antiAlias,
+              child: Image.asset(
+                'assets/icon.png',
+                fit: BoxFit.contain,
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Text('Saved Records', style: TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.file_download_rounded),
@@ -325,22 +416,30 @@ class _SavedDataScreenState extends State<SavedDataScreen> {
             ),
           const SizedBox(height: 16),
           Expanded(
-            child: _records.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+            child: RefreshIndicator(
+              onRefresh: _handleRefresh,
+              child: _records.isEmpty
+                  ? ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
                       children: [
-                        Icon(Icons.inbox_rounded, size: 80, color: Colors.grey.withOpacity(0.5)),
-                        const SizedBox(height: 16),
-                        const Text('No records found.', style: TextStyle(color: Colors.grey, fontSize: 18)),
+                        SizedBox(
+                          height: MediaQuery.of(context).size.height * 0.4,
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.inbox_rounded, size: 80, color: Colors.grey.withOpacity(0.5)),
+                              const SizedBox(height: 16),
+                              const Text('No records found.', style: TextStyle(color: Colors.grey, fontSize: 18)),
+                            ],
+                          ),
+                        ),
                       ],
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.only(bottom: 20),
-                    physics: const BouncingScrollPhysics(),
-                    itemCount: _records.length,
-                    itemBuilder: (context, index) {
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.only(bottom: 20),
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      itemCount: _records.length,
+                      itemBuilder: (context, index) {
                       final record = _records[index];
                       final isDuplicate = _duplicateMap[record.moduleId] ?? false;
 
@@ -348,92 +447,112 @@ class _SavedDataScreenState extends State<SavedDataScreen> {
                         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         decoration: BoxDecoration(
                           color: Theme.of(context).cardTheme.color,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Theme.of(context).colorScheme.primary.withOpacity(0.3), width: 1),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                            color: isDuplicate 
+                                ? Colors.redAccent.withOpacity(0.3) 
+                                : Theme.of(context).colorScheme.primary.withOpacity(0.25), 
+                            width: 1.5,
+                          ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
+                              color: Colors.black.withOpacity(0.06),
+                              blurRadius: 12,
+                              offset: const Offset(0, 6),
                             )
                           ],
                         ),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(20),
-                            onTap: () => _showRecordDetails(record, isDuplicate),
-                            child: Padding(
-                              padding: const EdgeInsets.all(20.0),
-                              child: Stack(
-                                children: [
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Container(
-                                            padding: const EdgeInsets.all(10),
-                                            decoration: BoxDecoration(
-                                              color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                                              shape: BoxShape.circle,
-                                            ),
-                                            child: Icon(Icons.qr_code_2_rounded, color: Theme.of(context).colorScheme.primary, size: 24),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(24),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () => _showRecordDetails(record, isDuplicate),
+                              child: Padding(
+                                padding: const EdgeInsets.all(18.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        // Premium Icon Container (Rounded square)
+                                        Container(
+                                          padding: const EdgeInsets.all(12),
+                                          decoration: BoxDecoration(
+                                            color: Theme.of(context).colorScheme.primary.withOpacity(0.12),
+                                            borderRadius: BorderRadius.circular(16),
                                           ),
-                                          const SizedBox(width: 16),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  record.moduleId,
-                                                  style: TextStyle(
-                                                    fontSize: 18,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Theme.of(context).textTheme.bodyLarge?.color,
-                                                  ),
-                                                  maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
+                                          child: Icon(Icons.qr_code_2_rounded, color: Theme.of(context).colorScheme.primary, size: 26),
+                                        ),
+                                        const SizedBox(width: 16),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                record.moduleId,
+                                                style: TextStyle(
+                                                  fontSize: 17,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Theme.of(context).textTheme.bodyLarge?.color,
+                                                  letterSpacing: 0.3,
                                                 ),
-                                                const SizedBox(height: 4),
-                                                Text(
-                                                  record.date,
-                                                  style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w500),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                '${record.date}${record.time != null && record.time!.isNotEmpty ? " • ${record.time}" : ""}',
+                                                style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w500),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        // Premium Delete Button
+                                        if (widget.themeManager.userRole == 'admin')
+                                          Material(
+                                            color: Colors.transparent,
+                                            child: InkWell(
+                                              onTap: () => _deleteRecord(record),
+                                              borderRadius: BorderRadius.circular(10),
+                                              splashColor: Colors.redAccent.withOpacity(0.2),
+                                              highlightColor: Colors.redAccent.withOpacity(0.1),
+                                              child: Container(
+                                                padding: const EdgeInsets.all(8),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.redAccent.withOpacity(0.08),
+                                                  borderRadius: BorderRadius.circular(10),
+                                                  border: Border.all(color: Colors.redAccent.withOpacity(0.3), width: 1),
                                                 ),
-                                              ],
+                                                child: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 18),
+                                              ),
                                             ),
                                           ),
-                                          const SizedBox(width: 40), // Space for delete button
-                                        ],
-                                      ),
-                                      const Padding(
-                                        padding: EdgeInsets.symmetric(vertical: 12.0),
-                                        child: Divider(height: 1),
-                                      ),
-                                      Wrap(
-                                        spacing: 8,
-                                        runSpacing: 8,
-                                        children: [
-                                          _buildTag(Icons.credit_card_rounded, record.jobCard, Theme.of(context).colorScheme.secondary),
-                                          _buildTag(Icons.storefront_rounded, record.station, Colors.orange),
-                                          _buildTag(Icons.person_rounded, record.operatorName, Colors.blue),
-                                          if (isDuplicate)
-                                            _buildTag(Icons.warning_rounded, 'DUPLICATE', Colors.redAccent),
-                                          if (record.reason.isNotEmpty)
-                                            _buildTag(Icons.note_alt_rounded, record.reason, Colors.grey),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                  Positioned(
-                                    top: -10,
-                                    right: -10,
-                                    child: IconButton(
-                                      icon: const Icon(Icons.delete_rounded, color: Colors.redAccent),
-                                      onPressed: () => _deleteRecord(record),
+                                      ],
                                     ),
-                                  ),
-                                ],
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(vertical: 12.0),
+                                      child: Divider(color: Theme.of(context).dividerColor.withOpacity(0.15), height: 1),
+                                    ),
+                                    Wrap(
+                                      spacing: 8,
+                                      runSpacing: 8,
+                                      children: [
+                                        _buildTag(Icons.credit_card_rounded, record.jobCard, Theme.of(context).colorScheme.secondary),
+                                        _buildTag(Icons.storefront_rounded, record.station, Colors.orange),
+                                        _buildTag(Icons.person_rounded, record.operatorName, Colors.blue),
+                                        if (isDuplicate)
+                                          _buildTag(Icons.warning_rounded, 'DUPLICATE', Colors.redAccent),
+                                        if (record.reason.isNotEmpty)
+                                          _buildTag(Icons.note_alt_rounded, record.reason, Colors.grey),
+                                        if (!record.isSynced)
+                                          _buildTag(Icons.cloud_off_rounded, 'LOCAL ONLY', Colors.orange),
+                                        if (widget.themeManager.userRole == 'admin' && record.savedBy != null && record.savedBy!.isNotEmpty)
+                                          _buildTag(Icons.admin_panel_settings_rounded, 'Saved by: ${record.savedBy}', Colors.purple),
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
@@ -441,6 +560,7 @@ class _SavedDataScreenState extends State<SavedDataScreen> {
                       );
                     },
                   ),
+            ),
           ),
         ],
       ),

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/scan_record.dart';
 import '../services/db_service.dart';
+import '../services/api_service.dart';
 
 class FormScreen extends StatefulWidget {
   final String scannedData;
@@ -56,28 +58,116 @@ class _FormScreenState extends State<FormScreen> {
 
   void _saveData() async {
     if (_formKey.currentState!.validate()) {
+      final moduleId = _moduleIdController.text;
+      
+      // Show checking indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(color: Color(0xFF6C63FF)),
+        ),
+      );
+
+      bool alreadyExists = await DBService().exists(moduleId);
+      if (!alreadyExists) {
+        alreadyExists = await ApiService().checkExistsOnline(moduleId);
+      }
+
+      if (mounted) {
+        Navigator.pop(context); // Dismiss loading indicator
+      }
+
+      if (alreadyExists) {
+        if (!mounted) return;
+        final bool? confirmSave = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            backgroundColor: const Color(0xFF1E1E2E),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, color: Colors.orangeAccent, size: 28),
+                SizedBox(width: 12),
+                Text(
+                  'Duplicate Data',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            content: const Text(
+              'This is a duplicate data. Do you want to save this or not?',
+              style: TextStyle(color: Colors.white70, fontSize: 15),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('No', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF6C63FF),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text('Yes', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        );
+
+        if (confirmSave != true) {
+          return;
+        }
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+      final currentUserName = prefs.getString('userName') ?? '';
+
       final record = ScanRecord(
         date: _dateController.text,
-        moduleId: _moduleIdController.text,
+        time: DateFormat('hh:mm a').format(DateTime.now()),
+        moduleId: moduleId,
         jobCard: _jobCardController.text,
         station: _stationController.text,
         operatorName: _operatorController.text,
         reason: _reasonController.text,
+        savedBy: currentUserName,
       );
       
-      await DBService().insertScan(record);
+      // Save locally
+      final localId = await DBService().insertScan(record);
+      final localScan = record.copyWith(id: localId);
+      
+      bool isSynced = false;
+      try {
+        final syncResult = await ApiService().uploadScan(localScan);
+        if (syncResult['success'] == true) {
+          final backendId = syncResult['backendId'];
+          await DBService().markAsSynced(localId, backendId);
+          isSynced = true;
+        }
+      } catch (e) {
+        // Upload failed - will sync later
+      }
       
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Row(
+          content: Row(
             children: [
-              Icon(Icons.check_circle_outline, color: Colors.white),
-              SizedBox(width: 12),
-              Text('Record Saved Successfully', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+              Icon(
+                isSynced ? Icons.check_circle_outline : Icons.cloud_off_rounded,
+                color: Colors.white,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                isSynced ? 'Record Synced & Saved' : 'Saved Locally (Offline)',
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+              ),
             ],
           ),
-          backgroundColor: Colors.green.shade600,
+          backgroundColor: isSynced ? Colors.green.shade600 : Colors.orange.shade600,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           margin: const EdgeInsets.all(20),
@@ -154,6 +244,7 @@ class _FormScreenState extends State<FormScreen> {
                 ],
               ),
             ),
+            Divider(color: Theme.of(context).dividerColor.withOpacity(0.2), height: 1),
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Form(
