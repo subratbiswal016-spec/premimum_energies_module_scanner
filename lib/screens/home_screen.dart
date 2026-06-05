@@ -95,6 +95,7 @@ class _HomeScreenState extends State<HomeScreen> {
       } catch (e) {
         debugPrint('Logout API call failed: $e');
       }
+      await DBService().clearAll();
       await widget.themeManager.logout();
       if (!mounted) return;
       Navigator.pushReplacement(
@@ -410,7 +411,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       _checkUnsynced();
                     },
                   ),
-                  if (widget.themeManager.userRole == 'admin')
+                  if (widget.themeManager.userRole == 'admin' || widget.themeManager.userRole == 'super_admin')
                     _buildPremiumButton(
                       context: context,
                       title: 'User Management',

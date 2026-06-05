@@ -166,4 +166,9 @@ class DBService {
       whereArgs: [localId],
     );
   }
+
+  Future<void> clearAll() async {
+    final db = await database;
+    await db.delete('scans');
+  }
 }
