@@ -82,7 +82,7 @@ class _SavedDataScreenState extends State<SavedDataScreen> {
 
     // 2. Fetch from backend and cache
     try {
-      final backendRecords = await ApiService().fetchScans(date: dateStr);
+      final backendRecords = await ApiService().fetchScans(themeManager: widget.themeManager, date: dateStr);
       if (backendRecords.isNotEmpty) {
         final db = DBService();
         for (var brec in backendRecords) {
@@ -120,7 +120,7 @@ class _SavedDataScreenState extends State<SavedDataScreen> {
 
     // Try fetching from backend for search query
     try {
-      final backendRecords = await ApiService().fetchScans(search: query);
+      final backendRecords = await ApiService().fetchScans(themeManager: widget.themeManager, search: query);
       if (backendRecords.isNotEmpty) {
         final db = DBService();
         for (var brec in backendRecords) {
@@ -266,6 +266,8 @@ class _SavedDataScreenState extends State<SavedDataScreen> {
                 _buildDetailRow('Station:', record.station),
                 _buildDetailRow('Operator:', record.operatorName),
                 _buildDetailRow('Date:', record.date),
+                if ((widget.themeManager.userRole == 'admin' || widget.themeManager.userRole == 'super_admin') && record.savedBy != null && record.savedBy!.isNotEmpty)
+                  _buildDetailRow('Saved By:', record.savedBy!),
                 const Divider(),
                 const Text('Reason:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
                 const SizedBox(height: 4),
@@ -509,7 +511,7 @@ class _SavedDataScreenState extends State<SavedDataScreen> {
                                           ),
                                         ),
                                         // Premium Delete Button
-                                        if (widget.themeManager.userRole == 'admin')
+                                        if (widget.themeManager.userRole == 'admin' || widget.themeManager.userRole == 'super_admin')
                                           Material(
                                             color: Colors.transparent,
                                             child: InkWell(
@@ -547,7 +549,7 @@ class _SavedDataScreenState extends State<SavedDataScreen> {
                                           _buildTag(Icons.note_alt_rounded, record.reason, Colors.grey),
                                         if (!record.isSynced)
                                           _buildTag(Icons.cloud_off_rounded, 'LOCAL ONLY', Colors.orange),
-                                        if (widget.themeManager.userRole == 'admin' && record.savedBy != null && record.savedBy!.isNotEmpty)
+                                        if ((widget.themeManager.userRole == 'admin' || widget.themeManager.userRole == 'super_admin') && record.savedBy != null && record.savedBy!.isNotEmpty)
                                           _buildTag(Icons.admin_panel_settings_rounded, 'Saved by: ${record.savedBy}', Colors.purple),
                                       ],
                                     ),

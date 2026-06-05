@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme_manager.dart';
 import '../services/api_service.dart';
+import 'sub_users_screen.dart';
 
 class AdminPanelScreen extends StatefulWidget {
   final ThemeManager themeManager;
@@ -27,7 +28,12 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     final users = await ApiService().fetchUsers(widget.themeManager);
     if (mounted) {
       setState(() {
-        _users = users;
+        if (widget.themeManager.userRole == 'super_admin') {
+          // Super admin only sees other admins and themselves
+          _users = users.where((u) => u['role'] == 'admin' || u['role'] == 'super_admin').toList();
+        } else {
+          _users = users;
+        }
         _isLoading = false;
       });
     }
@@ -122,28 +128,30 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                         ),
                         validator: (value) => value!.trim().isEmpty ? 'Password is required' : null,
                       ),
-                      const SizedBox(height: 16),
-                      DropdownButtonFormField<String>(
-                        value: selectedRole,
-                        dropdownColor: Theme.of(context).cardTheme.color ?? const Color(0xFF1E1E2E),
-                        borderRadius: BorderRadius.circular(16),
-                        icon: const Icon(Icons.keyboard_arrow_down_rounded),
-                        decoration: const InputDecoration(
-                          labelText: 'Role',
-                          prefixIcon: Icon(Icons.shield_outlined),
+                      if (widget.themeManager.userRole == 'super_admin') ...[
+                        const SizedBox(height: 16),
+                        DropdownButtonFormField<String>(
+                          value: selectedRole,
+                          dropdownColor: Theme.of(context).cardTheme.color ?? const Color(0xFF1E1E2E),
+                          borderRadius: BorderRadius.circular(16),
+                          icon: const Icon(Icons.keyboard_arrow_down_rounded),
+                          decoration: const InputDecoration(
+                            labelText: 'Role',
+                            prefixIcon: Icon(Icons.shield_outlined),
+                          ),
+                          items: const [
+                            DropdownMenuItem(value: 'user', child: Text('User')),
+                            DropdownMenuItem(value: 'admin', child: Text('Admin')),
+                          ],
+                          onChanged: (val) {
+                            if (val != null) {
+                              setModalState(() {
+                                selectedRole = val;
+                              });
+                            }
+                          },
                         ),
-                        items: const [
-                          DropdownMenuItem(value: 'user', child: Text('User')),
-                          DropdownMenuItem(value: 'admin', child: Text('Admin')),
-                        ],
-                        onChanged: (val) {
-                          if (val != null) {
-                            setModalState(() {
-                              selectedRole = val;
-                            });
-                          }
-                        },
-                      ),
+                      ],
                       const SizedBox(height: 32),
                       ElevatedButton(
                         onPressed: isSaving
@@ -416,7 +424,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                           color: theme.cardTheme.color,
                           borderRadius: BorderRadius.circular(24),
                           border: Border.all(
-                            color: role == 'admin' 
+                            color: (role == 'admin' || role == 'super_admin')
                                 ? const Color(0xFF6C63FF).withOpacity(0.25)
                                 : const Color(0xFF03DAC6).withOpacity(0.25), 
                             width: 1.5,
@@ -434,7 +442,22 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                           child: Material(
                             color: Colors.transparent,
                             child: InkWell(
-                              onTap: () => _showUserDetails(user),
+                              onTap: () {
+                                if (widget.themeManager.userRole == 'super_admin' && role == 'admin') {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => SubUsersScreen(
+                                        themeManager: widget.themeManager,
+                                        adminId: user['_id'],
+                                        adminName: username,
+                                      ),
+                                    ),
+                                  ).then((_) => _loadUsers()); // Refresh on return
+                                } else {
+                                  _showUserDetails(user);
+                                }
+                              },
                               child: Padding(
                                 padding: const EdgeInsets.all(18.0),
                                 child: Row(
@@ -443,16 +466,16 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                                     Container(
                                       padding: const EdgeInsets.all(12),
                                       decoration: BoxDecoration(
-                                        color: role == 'admin'
+                                        color: (role == 'admin' || role == 'super_admin')
                                             ? const Color(0xFF6C63FF).withOpacity(0.12)
                                             : const Color(0xFF03DAC6).withOpacity(0.12),
                                         borderRadius: BorderRadius.circular(16),
                                       ),
                                       child: Icon(
-                                        role == 'admin' 
+                                        (role == 'admin' || role == 'super_admin')
                                             ? Icons.admin_panel_settings_rounded 
                                             : Icons.person_rounded,
-                                        color: role == 'admin' 
+                                        color: (role == 'admin' || role == 'super_admin')
                                             ? const Color(0xFF6C63FF) 
                                             : const Color(0xFF03DAC6),
                                         size: 28,
@@ -479,7 +502,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                                               Container(
                                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                                 decoration: BoxDecoration(
-                                                  color: role == 'admin'
+                                                  color: (role == 'admin' || role == 'super_admin')
                                                       ? const Color(0xFF6C63FF).withOpacity(0.1)
                                                       : const Color(0xFF03DAC6).withOpacity(0.1),
                                                   borderRadius: BorderRadius.circular(8),
@@ -487,7 +510,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                                                 child: Text(
                                                   role.toUpperCase(),
                                                   style: TextStyle(
-                                                    color: role == 'admin' ? const Color(0xFF6C63FF) : const Color(0xFF03DAC6),
+                                                    color: (role == 'admin' || role == 'super_admin') ? const Color(0xFF6C63FF) : const Color(0xFF03DAC6),
                                                     fontSize: 10,
                                                     fontWeight: FontWeight.bold,
                                                   ),

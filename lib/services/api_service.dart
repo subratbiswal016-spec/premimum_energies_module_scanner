@@ -225,12 +225,16 @@ class ApiService {
   }
 
   // Fetch all users (Admin only)
-  Future<List<Map<String, dynamic>>> fetchUsers(ThemeManager themeManager) async {
+  Future<List<Map<String, dynamic>>> fetchUsers(ThemeManager themeManager, {String? createdBy}) async {
     if (themeManager.token.isEmpty) return [];
     final cleanUrl = themeManager.baseUrl.endsWith('/')
         ? themeManager.baseUrl.substring(0, themeManager.baseUrl.length - 1)
         : themeManager.baseUrl;
-    final url = Uri.parse('$cleanUrl/api/users');
+    var uri = '$cleanUrl/api/users';
+    if (createdBy != null && createdBy.isNotEmpty) {
+      uri = '$uri?createdBy=$createdBy';
+    }
+    final url = Uri.parse(uri);
     try {
       final response = await http.get(
         url,
