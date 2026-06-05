@@ -61,8 +61,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       if (!mounted) return;
       setState(() => _isLoading = false);
 
-      if (result['statusCode'] == 200) {
-        final userData = result['data']['user'];
+      if (result['success'] == true) {
+        final userData = result['user'];
         await widget.themeManager.saveUserName(userData['username']);
 
         if (!mounted) return;
@@ -71,7 +71,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
           MaterialPageRoute(builder: (context) => HomeScreen(themeManager: widget.themeManager)),
         );
       } else {
-        _showSnackbar(result['data']['message'] ?? 'Login failed.', Colors.redAccent);
+        _showSnackbar(result['message'] ?? 'Login failed.', Colors.redAccent);
       }
     } catch (e) {
       if (!mounted) return;
