@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ThemeManager extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.light;
   String _userName = '';
-  String _baseUrl = 'http://192.168.0.73:3000';
+  String _baseUrl = 'https://premier-sccanner-backend.onrender.com';
   String _token = '';
   String _userRole = '';
 
@@ -24,7 +24,7 @@ class ThemeManager extends ChangeNotifier {
     final isDark = prefs.getBool('isDark') ?? false;
     _themeMode = isDark ? ThemeMode.dark : ThemeMode.light;
     _userName = prefs.getString('userName') ?? '';
-    _baseUrl = prefs.getString('baseUrl') ?? 'http://192.168.0.73:3000';
+    _baseUrl = prefs.getString('baseUrl') ?? 'https://premier-sccanner-backend.onrender.com';
     _token = prefs.getString('token') ?? '';
     _userRole = prefs.getString('userRole') ?? '';
     notifyListeners();
