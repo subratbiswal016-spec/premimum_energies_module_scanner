@@ -81,7 +81,7 @@ class ApiService {
     if (token.isEmpty || baseUrl.isEmpty) {
       final prefs = await SharedPreferences.getInstance();
       token = prefs.getString('token') ?? '';
-      baseUrl = prefs.getString('baseUrl') ?? 'http://10.0.2.2:3000';
+      baseUrl = prefs.getString('baseUrl') ?? 'https://premier-sccanner-backend.onrender.com';
     }
 
     if (token.isEmpty) {
@@ -136,7 +136,7 @@ class ApiService {
     if (token.isEmpty || baseUrl.isEmpty) {
       final prefs = await SharedPreferences.getInstance();
       token = prefs.getString('token') ?? '';
-      baseUrl = prefs.getString('baseUrl') ?? 'http://10.0.2.2:3000';
+      baseUrl = prefs.getString('baseUrl') ?? 'https://premier-sccanner-backend.onrender.com';
     }
 
     if (token.isEmpty) return false;
@@ -162,7 +162,7 @@ class ApiService {
     if (token.isEmpty || baseUrl.isEmpty) {
       final prefs = await SharedPreferences.getInstance();
       token = prefs.getString('token') ?? '';
-      baseUrl = prefs.getString('baseUrl') ?? 'http://10.0.2.2:3000';
+      baseUrl = prefs.getString('baseUrl') ?? 'https://premier-sccanner-backend.onrender.com';
     }
 
     if (token.isEmpty) return [];
@@ -256,8 +256,9 @@ class ApiService {
     ThemeManager themeManager,
     String username,
     String password,
-    String role,
-  ) async {
+    String role, {
+    String? createdBy,
+  }) async {
     if (themeManager.token.isEmpty) {
       return {'success': false, 'message': 'No authentication token found'};
     }
@@ -265,15 +266,21 @@ class ApiService {
         ? themeManager.baseUrl.substring(0, themeManager.baseUrl.length - 1)
         : themeManager.baseUrl;
     final url = Uri.parse('$cleanUrl/api/auth/register');
+
+    final body = {
+      'username': username,
+      'password': password,
+      'role': role,
+    };
+    if (createdBy != null) {
+      body['createdBy'] = createdBy;
+    }
+
     try {
       final response = await http.post(
         url,
         headers: _getHeaders(themeManager.token),
-        body: jsonEncode({
-          'username': username,
-          'password': password,
-          'role': role,
-        }),
+        body: jsonEncode(body),
       ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 201) {
@@ -327,7 +334,7 @@ class ApiService {
     if (token.isEmpty || baseUrl.isEmpty) {
       final prefs = await SharedPreferences.getInstance();
       token = prefs.getString('token') ?? '';
-      baseUrl = prefs.getString('baseUrl') ?? 'http://10.0.2.2:3000';
+      baseUrl = prefs.getString('baseUrl') ?? 'https://premier-sccanner-backend.onrender.com';
     }
 
     if (token.isEmpty) return false;

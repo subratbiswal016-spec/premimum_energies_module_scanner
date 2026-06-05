@@ -44,7 +44,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     final TextEditingController usernameController = TextEditingController();
     final TextEditingController passwordController = TextEditingController();
     bool obscurePassword = true;
-    String selectedRole = 'user';
+    String selectedRole = widget.themeManager.userRole == 'super_admin' ? 'admin' : 'user';
     bool isSaving = false;
 
     showModalBottomSheet(
@@ -89,7 +89,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                           Icon(Icons.person_add_rounded, color: Color(0xFF6C63FF), size: 28),
                           SizedBox(width: 12),
                           Text(
-                            'Create New User',
+                            'Create New Admin',
                             style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
@@ -128,30 +128,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                         ),
                         validator: (value) => value!.trim().isEmpty ? 'Password is required' : null,
                       ),
-                      if (widget.themeManager.userRole == 'super_admin') ...[
-                        const SizedBox(height: 16),
-                        DropdownButtonFormField<String>(
-                          value: selectedRole,
-                          dropdownColor: Theme.of(context).cardTheme.color ?? const Color(0xFF1E1E2E),
-                          borderRadius: BorderRadius.circular(16),
-                          icon: const Icon(Icons.keyboard_arrow_down_rounded),
-                          decoration: const InputDecoration(
-                            labelText: 'Role',
-                            prefixIcon: Icon(Icons.shield_outlined),
-                          ),
-                          items: const [
-                            DropdownMenuItem(value: 'user', child: Text('User')),
-                            DropdownMenuItem(value: 'admin', child: Text('Admin')),
-                          ],
-                          onChanged: (val) {
-                            if (val != null) {
-                              setModalState(() {
-                                selectedRole = val;
-                              });
-                            }
-                          },
-                        ),
-                      ],
+
                       const SizedBox(height: 32),
                       ElevatedButton(
                         onPressed: isSaving
@@ -385,7 +362,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
         onPressed: _addUser,
         backgroundColor: theme.colorScheme.primary,
         icon: const Icon(Icons.person_add_rounded, color: Colors.white),
-        label: const Text('ADD USER', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        label: const Text('ADD ADMIN', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
       ),
       body: RefreshIndicator(
         onRefresh: _handleRefresh,

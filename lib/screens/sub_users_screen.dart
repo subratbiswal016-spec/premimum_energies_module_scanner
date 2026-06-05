@@ -161,6 +161,155 @@ class _SubUsersScreenState extends State<SubUsersScreen> {
     }
   }
 
+  void _addUser() {
+    final formKey = GlobalKey<FormState>();
+    final TextEditingController usernameController = TextEditingController();
+    final TextEditingController passwordController = TextEditingController();
+    bool obscurePassword = true;
+    bool isSaving = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).cardTheme.color ?? const Color(0xFF1E1E2E),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(30),
+                    topRight: Radius.circular(30),
+                  ),
+                  border: Border.all(color: Colors.white.withOpacity(0.08), width: 1),
+                ),
+                padding: const EdgeInsets.all(28),
+                child: SingleChildScrollView(
+                  child: Form(
+                    key: formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                      Center(
+                        child: Container(
+                          width: 50,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.withOpacity(0.3),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Text(
+                        'Create New User for ${widget.adminName}',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      TextFormField(
+                        controller: usernameController,
+                        maxLength: 25,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                        decoration: const InputDecoration(
+                          labelText: 'Username',
+                          prefixIcon: Icon(Icons.person_outline_rounded),
+                        ),
+                        validator: (value) => value!.trim().isEmpty ? 'Username is required' : null,
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: passwordController,
+                        maxLength: 10,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                        obscureText: obscurePassword,
+                        decoration: InputDecoration(
+                          labelText: 'Password',
+                          prefixIcon: const Icon(Icons.lock_outline_rounded),
+                          suffixIcon: IconButton(
+                            icon: Icon(obscurePassword ? Icons.visibility_off : Icons.visibility),
+                            onPressed: () {
+                              setModalState(() {
+                                obscurePassword = !obscurePassword;
+                              });
+                            },
+                          ),
+                        ),
+                        validator: (value) => value!.trim().isEmpty ? 'Password is required' : null,
+                      ),
+                      const SizedBox(height: 32),
+                      ElevatedButton(
+                        onPressed: isSaving
+                            ? null
+                            : () async {
+                                if (formKey.currentState!.validate()) {
+                                  setModalState(() {
+                                    isSaving = true;
+                                  });
+                                  final result = await ApiService().registerUser(
+                                    widget.themeManager,
+                                    usernameController.text.trim(),
+                                    passwordController.text.trim(),
+                                    'user',
+                                    createdBy: widget.adminId,
+                                  );
+                                  if (mounted) {
+                                    setModalState(() {
+                                      isSaving = false;
+                                    });
+                                    if (result['success'] == true) {
+                                      Navigator.pop(context);
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('User created successfully!'),
+                                          backgroundColor: Colors.green,
+                                        ),
+                                      );
+                                      _loadUsers();
+                                    } else {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(result['message'] ?? 'Failed to create user'),
+                                          backgroundColor: Colors.redAccent,
+                                        ),
+                                      );
+                                    }
+                                  }
+                                }
+                              },
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
+                        child: isSaving
+                            ? const SizedBox(
+                                height: 22,
+                                width: 22,
+                                child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                              )
+                            : const Text(
+                                'CREATE USER',
+                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1),
+                              ),
+                      ),
+                    ],
+                  ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -308,6 +457,13 @@ class _SubUsersScreenState extends State<SubUsersScreen> {
                       );
                     },
                   ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _addUser,
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('Add User', style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: const Color(0xFF6C63FF),
+        foregroundColor: Colors.white,
       ),
     );
   }

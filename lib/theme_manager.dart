@@ -24,7 +24,7 @@ class ThemeManager extends ChangeNotifier {
     final isDark = prefs.getBool('isDark') ?? false;
     _themeMode = isDark ? ThemeMode.dark : ThemeMode.light;
     _userName = prefs.getString('userName') ?? '';
-    _baseUrl = prefs.getString('baseUrl') ?? 'https://premier-sccanner-backend.onrender.com';
+    _baseUrl = 'https://premier-sccanner-backend.onrender.com'; // Force production URL
     _token = prefs.getString('token') ?? '';
     _userRole = prefs.getString('userRole') ?? '';
     notifyListeners();
