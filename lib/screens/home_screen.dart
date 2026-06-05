@@ -24,7 +24,7 @@ class HomeScreen extends StatelessWidget {
             color: gradientColors.last.withOpacity(0.4),
             blurRadius: 15,
             offset: const Offset(0, 8),
-          )
+          ),
         ],
         gradient: LinearGradient(
           colors: gradientColors,
@@ -106,7 +106,10 @@ class HomeScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 20,
+                    ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -124,18 +127,29 @@ class HomeScreen extends StatelessWidget {
                               child: Image.network(
                                 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSqPj-wFvS93WwZ0Zf_W9_E75oJgLq53Wb-Zw&s',
                                 fit: BoxFit.contain,
-                                errorBuilder: (context, error, stackTrace) => const Icon(Icons.solar_power, color: Color(0xFF6C63FF)),
+                                errorBuilder: (context, error, stackTrace) =>
+                                    const Icon(
+                                      Icons.solar_power,
+                                      color: Color(0xFF6C63FF),
+                                    ),
                               ),
                             ),
                             const SizedBox(width: 12),
                             const Text(
                               'Premier Energies',
-                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ],
                         ),
                         IconButton(
-                          icon: Icon(themeManager.themeMode == ThemeMode.dark ? Icons.light_mode : Icons.dark_mode),
+                          icon: Icon(
+                            themeManager.themeMode == ThemeMode.dark
+                                ? Icons.light_mode
+                                : Icons.dark_mode,
+                          ),
                           onPressed: themeManager.toggleTheme,
                         ),
                       ],
@@ -147,15 +161,24 @@ class HomeScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primary.withOpacity(0.15),
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.primary.withOpacity(0.15),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.waving_hand_rounded, size: 16, color: Theme.of(context).colorScheme.primary),
+                              Icon(
+                                Icons.waving_hand_rounded,
+                                size: 16,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
                               const SizedBox(width: 8),
                               Text(
                                 'Hello, ${themeManager.userName}',
@@ -171,7 +194,11 @@ class HomeScreen extends StatelessWidget {
                         const SizedBox(height: 16),
                         Text(
                           'Ready to Scan?',
-                          style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.bodyLarge?.color),
+                          style: TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).textTheme.bodyLarge?.color,
+                          ),
                         ),
                       ],
                     ),
@@ -181,11 +208,16 @@ class HomeScreen extends StatelessWidget {
                     title: 'New Scan',
                     subtitle: 'Scan a barcode and fill the form',
                     icon: Icons.qr_code_scanner_rounded,
-                    gradientColors: const [Color(0xFF6C63FF), Color(0xFF9D97FF)],
+                    gradientColors: const [
+                      Color(0xFF6C63FF),
+                      Color(0xFF9D97FF),
+                    ],
                     onPressed: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const ScannerScreen()),
+                        MaterialPageRoute(
+                          builder: (context) => const ScannerScreen(),
+                        ),
                       );
                     },
                   ),
@@ -194,11 +226,16 @@ class HomeScreen extends StatelessWidget {
                     title: 'Saved Records',
                     subtitle: 'View and search past scans',
                     icon: Icons.folder_special_rounded,
-                    gradientColors: const [Color(0xFF03DAC6), Color(0xFF64E6DA)],
+                    gradientColors: const [
+                      Color(0xFF03DAC6),
+                      Color(0xFF64E6DA),
+                    ],
                     onPressed: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const SavedDataScreen()),
+                        MaterialPageRoute(
+                          builder: (context) => const SavedDataScreen(),
+                        ),
                       );
                     },
                   ),
