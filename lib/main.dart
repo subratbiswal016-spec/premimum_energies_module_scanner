@@ -66,6 +66,12 @@ class _BarcodeAppState extends State<BarcodeApp> {
           elevation: 0,
           titleTextStyle: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 1.2, color: Colors.black87),
           iconTheme: IconThemeData(color: Colors.black87),
+          shape: Border(
+            bottom: BorderSide(
+              color: Colors.black12,
+              width: 1.0,
+            ),
+          ),
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
@@ -105,6 +111,13 @@ class _BarcodeAppState extends State<BarcodeApp> {
           backgroundColor: Colors.transparent,
           elevation: 0,
           titleTextStyle: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 1.2, color: Colors.white),
+          iconTheme: IconThemeData(color: Colors.white70),
+          shape: Border(
+            bottom: BorderSide(
+              color: Colors.white12,
+              width: 1.0,
+            ),
+          ),
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
