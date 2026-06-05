@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'theme_manager.dart';
 import 'screens/home_screen.dart';
-import 'screens/onboarding_screen.dart';
+import 'screens/login_screen.dart';
+import 'services/api_service.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,10 +28,24 @@ class BarcodeApp extends StatefulWidget {
 }
 
 class _BarcodeAppState extends State<BarcodeApp> {
+  bool _isCheckingAuth = true;
+  bool _isLoggedIn = false;
+
   @override
   void initState() {
     super.initState();
     widget.themeManager.addListener(_themeListener);
+    _checkAuth();
+  }
+
+  Future<void> _checkAuth() async {
+    final loggedIn = await ApiService.isLoggedIn();
+    if (mounted) {
+      setState(() {
+        _isLoggedIn = loggedIn;
+        _isCheckingAuth = false;
+      });
+    }
   }
 
   @override
@@ -144,9 +159,11 @@ class _BarcodeAppState extends State<BarcodeApp> {
         ),
       ),
       
-      home: widget.themeManager.userName.isEmpty 
-          ? OnboardingScreen(themeManager: widget.themeManager) 
-          : HomeScreen(themeManager: widget.themeManager),
+      home: _isCheckingAuth 
+          ? const Scaffold(body: Center(child: CircularProgressIndicator()))
+          : _isLoggedIn 
+              ? HomeScreen(themeManager: widget.themeManager)
+              : LoginScreen(themeManager: widget.themeManager),
     );
   }
 }
