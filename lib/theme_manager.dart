@@ -16,10 +16,10 @@ class ThemeManager extends ChangeNotifier {
   bool get isAuthenticated => _token.isNotEmpty;
 
   ThemeManager() {
-    _loadPreferences();
+    loadPreferences();
   }
 
-  Future<void> _loadPreferences() async {
+  Future<void> loadPreferences() async {
     final prefs = await SharedPreferences.getInstance();
     final isDark = prefs.getBool('isDark') ?? false;
     _themeMode = isDark ? ThemeMode.dark : ThemeMode.light;

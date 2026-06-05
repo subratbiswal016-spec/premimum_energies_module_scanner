@@ -56,7 +56,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     setState(() => _isLoading = true);
 
     try {
-      final result = await ApiService.login(username, password);
+      final result = await ApiService().login(widget.themeManager.baseUrl, username, password);
 
       if (!mounted) return;
       setState(() => _isLoading = false);

@@ -39,10 +39,10 @@ class _BarcodeAppState extends State<BarcodeApp> {
   }
 
   Future<void> _checkAuth() async {
-    final loggedIn = await ApiService.isLoggedIn();
+    await widget.themeManager.loadPreferences();
     if (mounted) {
       setState(() {
-        _isLoggedIn = loggedIn;
+        _isLoggedIn = widget.themeManager.token.isNotEmpty;
         _isCheckingAuth = false;
       });
     }
