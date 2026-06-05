@@ -89,7 +89,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                           Icon(Icons.person_add_rounded, color: Color(0xFF6C63FF), size: 28),
                           SizedBox(width: 12),
                           Text(
-                            'Create New User',
+                            'Create New Admin',
                             style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
@@ -362,7 +362,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
         onPressed: _addUser,
         backgroundColor: theme.colorScheme.primary,
         icon: const Icon(Icons.person_add_rounded, color: Colors.white),
-        label: const Text('ADD USER', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        label: const Text('ADD ADMIN', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
       ),
       body: RefreshIndicator(
         onRefresh: _handleRefresh,
