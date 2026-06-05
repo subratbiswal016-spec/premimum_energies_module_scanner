@@ -63,7 +63,12 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
       if (result['success'] == true) {
         final userData = result['user'];
-        await widget.themeManager.saveUserName(userData['username']);
+        await widget.themeManager.saveAuthData(
+          userName: userData['username'] ?? '',
+          token: result['token'] ?? '',
+          role: userData['role'] ?? '',
+          baseUrl: widget.themeManager.baseUrl,
+        );
 
         if (!mounted) return;
         Navigator.pushReplacement(
