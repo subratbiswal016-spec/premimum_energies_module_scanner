@@ -84,13 +84,13 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                         ),
                       ),
                       const SizedBox(height: 24),
-                      const Row(
+                      Row(
                         children: [
-                          Icon(Icons.person_add_rounded, color: Color(0xFF6C63FF), size: 28),
-                          SizedBox(width: 12),
+                          const Icon(Icons.person_add_rounded, color: Color(0xFF6C63FF), size: 28),
+                          const SizedBox(width: 12),
                           Text(
-                            'Create New Admin',
-                            style: TextStyle(
+                            widget.themeManager.userRole == 'super_admin' ? 'Create New Admin' : 'Create New User',
+                            style: const TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
                             ),
@@ -362,7 +362,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
         onPressed: _addUser,
         backgroundColor: theme.colorScheme.primary,
         icon: const Icon(Icons.person_add_rounded, color: Colors.white),
-        label: const Text('ADD ADMIN', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        label: Text(widget.themeManager.userRole == 'super_admin' ? 'ADD ADMIN' : 'ADD USER', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
       ),
       body: RefreshIndicator(
         onRefresh: _handleRefresh,
